@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IVF Expenses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#FAF7F2;
+    --card:#FFFFFF;
+    --ink:#2A2827;
+    --ink-soft:#726B63;
+    --ink-faint:#A39B90;
+    --border:#E7E0D3;
+    --sage:#7C8A72;
+    --sage-dark:#5F6E56;
+    --rose:#BD7F72;
+    --belfast:#4F6D89;
+    --belfast-soft:#E7EEF3;
+    --greece:#2E8290;
+    --greece-soft:#E1F0EF;
+    --gold:#D9A55C;
+    --danger:#B5544A;
+    --radius:14px;
+    --radius-sm:9px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{max-width:640px;margin:0 auto;padding-bottom:100px;height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  h1,h2,h3,.serif{font-family:'Fraunces',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .loading{padding:60px 20px;text-align:center;color:var(--ink-soft);font-family:'Fraunces',serif;font-size:18px;}
+
+  .auth-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .auth-box{width:100%;max-width:340px;}
+  .auth-title{font-size:28px;margin:0 0 6px 0;text-align:center;}
+  .auth-sub{font-size:13px;color:var(--ink-soft);text-align:center;margin:0 0 26px 0;}
+  .auth-error{color:var(--danger);font-size:13px;margin:6px 0 4px 0;min-height:16px;}
+  .signout-link{position:absolute;top:16px;right:18px;background:none;border:none;color:var(--ink-faint);font-size:11px;text-decoration:underline;cursor:pointer;padding:4px;}
+
+  /* Header */
+  .app-header{
+    position:sticky;top:0;z-index:20;background:var(--bg);
+    padding:18px 18px 0 18px;border-bottom:1px solid var(--border);
+  }
+  .eyebrow{
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--sage-dark);
+    font-weight:600;margin-bottom:2px;
+  }
+  .app-title{font-size:26px;font-weight:600;margin:0 0 14px 0;letter-spacing:-.01em;}
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{
+    flex:0 0 auto;padding:8px 14px;border-radius:999px;border:1px solid var(--border);
+    background:var(--card);color:var(--ink-soft);font-size:14px;font-weight:600;cursor:pointer;
+    white-space:nowrap;transition:all .15s ease;
+  }
+  .tab.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .tab.active[data-loc="Belfast"]{background:var(--belfast);border-color:var(--belfast);color:#fff;}
+  .tab.active[data-loc="Greece"]{background:var(--greece);border-color:var(--greece);color:#fff;}
+  .tab.active.other-loc{background:var(--rose);border-color:var(--rose);color:#fff;}
+  .tab.add-tab{border-style:dashed;color:var(--ink-faint);}
+
+  .main{padding:18px;}
+
+  /* Buttons */
+  .btn{
+    font-family:'Inter',sans-serif;font-size:14px;font-weight:600;border-radius:10px;
+    padding:10px 16px;border:1px solid var(--border);background:var(--card);color:var(--ink);
+    cursor:pointer;transition:transform .1s ease;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .btn-ghost{background:transparent;border-color:transparent;color:var(--ink-soft);padding:8px 10px;}
+  .btn-danger{background:transparent;border-color:transparent;color:var(--danger);padding:6px 8px;font-size:13px;}
+  .btn-sm{padding:7px 12px;font-size:13px;}
+  .btn-full{width:100%;}
+
+  /* Dashboard */
+  .hero{padding:8px 2px 22px 2px;}
+  .hero-label{font-size:13px;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
+  .hero-totals{display:flex;flex-wrap:wrap;gap:22px;}
+  .hero-total-num{font-size:38px;font-weight:600;line-height:1;}
+  .hero-total-cur{font-size:12px;color:var(--ink-faint);margin-top:4px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
+  .hero-sub{font-size:13px;color:var(--ink-soft);margin-top:10px;}
+
+  .empty-state{
+    text-align:center;padding:50px 20px;color:var(--ink-soft);border:1px dashed var(--border);
+    border-radius:var(--radius);background:var(--card);
+  }
+  .empty-state h3{margin:0 0 6px 0;color:var(--ink);}
+  .empty-state p{font-size:14px;margin:0 0 16px 0;}
+
+  .section-title{
+    font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--ink-soft);margin:28px 0 12px 0;
+  }
+  .loc-tab-header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;}
+  .loc-nights-pill{font-size:12px;color:var(--ink-soft);background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:999px;font-weight:600;}
+
+  /* Timeline (signature element) */
+  .timeline-wrap{overflow-x:auto;padding:10px 2px 6px 2px;scrollbar-width:none;}
+  .timeline-wrap::-webkit-scrollbar{display:none;}
+  .timeline{display:flex;align-items:flex-end;gap:26px;position:relative;padding:10px 6px 0 6px;min-width:min-content;}
+  .timeline::before{content:'';position:absolute;left:6px;right:6px;top:36px;height:1px;background:var(--border);}
+  .tl-node{display:flex;flex-direction:column;align-items:center;flex:0 0 auto;width:88px;}
+  .tl-dot{border-radius:50%;position:relative;z-index:2;border:3px solid var(--bg);}
+  .tl-name{font-size:12px;font-weight:700;margin-top:8px;text-align:center;}
+  .tl-date{font-size:10px;color:var(--ink-faint);margin-top:1px;}
+  .tl-amt{font-size:11px;margin-top:3px;font-weight:600;}
+
+  .loc-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .loc-card{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px;cursor:pointer;border-left:4px solid var(--sage);
+  }
+  .loc-card-name{font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-bottom:6px;}
+  .loc-card-amt{font-size:23px;font-weight:700;color:var(--ink);}
+  .loc-card-sub{font-size:11px;color:var(--ink-faint);margin-top:2px;}
+  .loc-card-avg{font-size:11px;font-style:italic;color:var(--ink-faint);margin-top:5px;}
+
+  .cat-bar-block{margin-bottom:16px;}
+  .cat-bar-cur{font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;}
+  .cat-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .cat-bar-label{width:130px;flex:0 0 auto;font-size:12.5px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cat-bar-track{flex:1;background:var(--border);border-radius:6px;height:9px;overflow:hidden;}
+  .cat-bar-fill{height:100%;border-radius:6px;}
+  .cat-bar-amt{width:70px;flex:0 0 auto;text-align:right;font-size:12.5px;font-weight:600;}
+
+  .bd-filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px;scrollbar-width:none;}
+  .bd-filters::-webkit-scrollbar{display:none;}
+  .bd-pill{
+    flex:0 0 auto;padding:7px 13px;border-radius:999px;border:1px solid var(--border);
+    background:var(--card);color:var(--ink-soft);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;
+  }
+  .bd-pill.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .bd-total{font-size:30px;font-weight:600;margin:2px 0 18px 0;}
+  .bd-cat-group{margin-bottom:20px;}
+  .bd-cat-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:pointer;}
+  .bd-cat-total{font-weight:700;font-size:14px;}
+  .bd-group-name{font-weight:700;font-size:14px;color:var(--ink);}
+
+  /* Dashboard matrix table */
+  .dash-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:10px;background:var(--card);}
+  .dash-table{border-collapse:collapse;width:100%;}
+  .dash-table th,.dash-table td{padding:9px 13px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:13px;}
+  .dash-table thead th{font-family:'Inter',sans-serif;font-weight:700;font-size:12px;color:var(--ink-soft);background:var(--card);border-bottom:2px solid var(--border);}
+  .dash-row-label{text-align:left !important;font-family:'Inter',sans-serif !important;font-weight:600;font-size:12.5px !important;color:var(--ink);position:sticky;left:0;background:var(--card);z-index:1;}
+  .dash-total-col{font-weight:700;background:#F3EEE3;}
+  .dash-subtotal td{background:#E7EFE2;font-weight:700;}
+  .dash-grand-total td{background:#F8E2D2;font-weight:700;border-top:2px solid var(--ink);}
+  .dash-grand-total td.dash-row-label{background:#F8E2D2;}
+  .dash-subtotal td.dash-row-label{background:#E7EFE2;}
+
+  .reset-link{
+    display:block;text-align:center;margin-top:36px;font-size:12.5px;color:var(--ink-faint);
+    text-decoration:underline;cursor:pointer;background:none;border:none;width:100%;padding:10px;
+  }
+
+  /* Trip cards */
+  .trip-card{
+    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    margin-bottom:14px;overflow:hidden;
+  }
+  .trip-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;gap:10px;}
+  .trip-head-left{min-width:0;}
+  .trip-name{font-weight:700;font-size:16px;margin:0;}
+  .trip-dates{font-size:12px;color:var(--ink-faint);margin-top:2px;}
+  .trip-head-right{display:flex;align-items:center;gap:10px;flex:0 0 auto;}
+  .trip-total-amt{font-weight:600;font-size:16px;}
+  .chev{transition:transform .15s ease;color:var(--ink-faint);font-size:13px;}
+  .chev.open{transform:rotate(180deg);}
+  .trip-body{padding:0 16px 16px 16px;border-top:1px solid var(--border);}
+  .trip-actions{display:flex;justify-content:flex-end;gap:4px;padding-top:10px;}
+
+  .fixed-grid{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+  .fixed-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .fixed-row label{font-size:13.5px;color:var(--ink-soft);flex:1;min-width:0;}
+  .fixed-input-wrap{display:flex;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0 8px;width:104px;flex:0 0 auto;}
+  .fixed-input-wrap.nights-wrap{width:78px;}
+  .fixed-input-wrap span{font-size:13px;color:var(--ink-faint);}
+  .fixed-input-wrap input{
+    border:none;background:transparent;padding:8px 4px;width:100%;font-family:'IBM Plex Mono',monospace;
+    font-size:14px;text-align:right;color:var(--ink);
+  }
+  .fixed-input-wrap input:focus{outline:none;}
+  .nights-suffix{font-size:11px;color:var(--ink-faint);}
+  .nights-row{padding-left:14px;margin-top:-2px;}
+  .nights-row label{color:var(--ink-faint);font-size:12.5px;}
+  .subtotal-row{display:flex;justify-content:space-between;padding-top:10px;margin-top:6px;border-top:1px dashed var(--border);font-size:13.5px;font-weight:700;}
+
+  .item-section{margin-top:22px;}
+  .item-section-header{display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:2px 0;}
+  .item-section-header .ish-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);}
+  .item-section-header .ish-right{display:flex;align-items:center;gap:8px;}
+  .item-section-header .ish-amt{font-weight:700;font-size:14px;}
+  .item-subtotal{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
+  .item-subtotal .amt{font-weight:700;font-size:14px;}
+  .item-list{margin-top:10px;display:flex;flex-direction:column;gap:8px;}
+  .item-row{display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--bg);border-radius:9px;}
+  .item-row-main{flex:1;min-width:0;}
+  .item-row-name{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .item-row-meta{display:flex;align-items:center;gap:6px;margin-top:3px;}
+  .item-row-date{font-size:11px;color:var(--ink-faint);}
+  .chip{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;color:#fff;white-space:nowrap;}
+  .item-row-cost{font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:600;flex:0 0 auto;}
+  .item-row-actions{display:flex;gap:2px;flex:0 0 auto;}
+  .icon-btn{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:14px;padding:4px;}
+  .icon-btn:hover{color:var(--ink);}
+
+  .add-entry-btn{margin-top:12px;}
+  .item-form{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:12px;}
+  .form-row{margin-bottom:10px;}
+  .form-row label{display:block;font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;}
+  .form-row input,.form-row select{
+    width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;
+    font-size:14px;background:#fff;color:var(--ink);
+  }
+  .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .form-btn-row{display:flex;gap:8px;margin-top:4px;}
+  .import-textarea{
+    width:100%;min-height:160px;padding:10px;border:1px solid var(--border);border-radius:8px;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:#fff;color:var(--ink);resize:vertical;
+  }
+  .import-help{font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;line-height:1.5;}
+  .import-result{font-size:13px;color:var(--sage-dark);font-weight:600;margin-top:10px;}
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(42,40,39,.45);z-index:50;
+    display:flex;align-items:flex-end;justify-content:center;
+  }
+  .modal{
+    background:#fff;width:100%;max-width:640px;border-radius:20px 20px 0 0;padding:22px 20px 26px 20px;
+    max-height:88vh;overflow-y:auto;
+  }
+  .modal h2{margin:0 0 16px 0;font-size:20px;}
+
+  @media (min-width:520px){
+    .modal-overlay{align-items:center;}
+    .modal{border-radius:20px;}
+  }
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">Loading your journey…</div></div>
+
+<div id="auth-screen" class="auth-screen" style="display:none;">
+  <div class="auth-box">
+    <h1 class="serif auth-title">IVF Expenses</h1>
+    <p class="auth-sub">Sign in to access your data.</p>
+    <div class="form-row"><label>Email</label><input type="email" id="auth-email" autocomplete="username"></div>
+    <div class="form-row"><label>Password</label><input type="password" id="auth-password" autocomplete="current-password"></div>
+    <div id="auth-error" class="auth-error"></div>
+    <button class="btn btn-primary btn-full" id="auth-signin-btn">Sign In</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const CURRENCY_SYMBOLS = { GBP:'£', EUR:'€', USD:'$' };
+  const PALETTE = ['#7C8A72','#BD7F72','#4F6D89','#2E8290','#D9A55C','#8C6E9C','#A6763E','#5F6E56'];
+
+  // Fixed, single-amount cost lines (nights is tracked alongside accommodation)
+  const FIXED_ITEMS = [
+    {key:'flight1', label:'Flights To Greece'},
+    {key:'flight2', label:'Flights Home'},
+    {key:'accommodation', label:'Accommodation', hasNights:true},
+    {key:'collectionTransfer', label:'Collection & Transfer'}
+  ];
+
+  // Itemized (date / item / cost) sections — same behaviour as spending money
+  const ITEM_SECTIONS = [
+    {key:'medication', title:'Medication', hasCategory:false},
+    {key:'tests', title:'Tests', hasCategory:false},
+    {key:'spending', title:'Spending money', hasCategory:true}
+  ];
+
+  const DEFAULT_CATEGORIES = [
+    {name:'Food & Drink', color:'#BD7F72'},
+    {name:'Uber', color:'#4F6D89'},
+    {name:'Transport', color:'#3E5670'},
+    {name:'Toiletries & Comfort', color:'#D9A55C'},
+    {name:'Shopping', color:'#2E8290'},
+    {name:'Medical extras', color:'#8C6E9C'},
+    {name:'Tourist', color:'#A6763E'},
+    {name:'Other', color:'#7C8A72'}
+  ];
+
+  // Maps a spreadsheet category label (lowercased) to where an imported row should land.
+  // type:'spending' rows also carry which spending-money category to file under.
+  const IMPORT_CATEGORY_ROUTES = {
+    'food': {type:'spending', category:'Food & Drink'},
+    'drink': {type:'spending', category:'Food & Drink'},
+    'f&d': {type:'spending', category:'Food & Drink'},
+    'uber': {type:'spending', category:'Uber'},
+    'travel': {type:'spending', category:'Transport'},
+    'tourist': {type:'spending', category:'Tourist'},
+    'other': {type:'spending', category:'Other'},
+    'meds': {type:'medication'},
+    'medication': {type:'medication'},
+    'tests': {type:'tests'},
+    'test': {type:'tests'}
+  };
+  const STORAGE_KEY = 'ivf-tracker-state'; // legacy localStorage key — read once for one-time migration into Firestore
+
+  // ---- Firebase setup ----
+  // Paste your project's config here (Firebase console → Project settings → Your apps → SDK setup and configuration).
+  const firebaseConfig = {
+    apiKey: "AIzaSyBuTSmbDa_O7Ir32681Abrmv_VJFpo-Ukc",
+    authDomain: "ivf-expenses.firebaseapp.com",
+    projectId: "ivf-expenses",
+    storageBucket: "ivf-expenses.firebasestorage.app",
+    messagingSenderId: "565242525748",
+    appId: "1:565242525748:web:7359c97a205854cae5f261"
+  };
+  let firebaseReady = false;
+  let auth = null, db = null, currentUser = null, unsubscribeSnapshot = null;
+  try{
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    firebaseReady = true;
+  }catch(e){
+    console.error('Firebase init failed', e);
+  }
+
+
+  // Locations hidden from the tab bar (data is preserved, just not shown) — edit this list to unhide.
+  const HIDDEN_LOCATIONS = ['Belfast'];
+  const PLANNING_LOCATION = 'Planning';
+  // Display label overrides for tabs/headers — underlying location value is unchanged.
+  const LOCATION_LABELS = { 'Greece':'Greece Trips' };
+
+  // The 6 overview totals, and how each is computed per trip.
+  const OVERVIEW_BUCKETS = [
+    {key:'flights', label:'Flights'},
+    {key:'accommodation', label:'Accommodation'},
+    {key:'spending', label:'Spending Money'},
+    {key:'medication', label:'Medications'},
+    {key:'tests', label:'Tests'},
+    {key:'collectionTransfer', label:'Collection & Transfer'}
+  ];
+
+  // Dashboard tab: spreadsheet-style matrix, trips as columns, two row blocks each with a subtotal.
+  const DASH_TOP_ROWS = [
+    {key:'flight1', label:'Flights To Greece', type:'fixed'},
+    {key:'flight2', label:'Flights Home', type:'fixed'},
+    {key:'accommodation', label:'Accommodation', type:'fixed'},
+    {key:'spending', label:'Spending Money', type:'list'}
+  ];
+  const DASH_BOTTOM_ROWS = [
+    {key:'medication', label:'Meds', type:'list'},
+    {key:'tests', label:'Tests', type:'list'},
+    {key:'collectionTransfer', label:'Collection & Transfer', type:'fixed'}
+  ];
+
+  let state = { locations:['Belfast','Greece'], trips:[], categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)) };
+  let currentTab = 'overview';
+  let expandedTrips = new Set();
+  let modalState = { open:false, mode:'add', tripId:null, presetLocation:null };
+  let importState = { open:false, tripId:null };
+  let breakdownState = { activeBucket:'flights' };
+  let itemUI = {}; // "tripId|sectionKey" -> {adding:bool, editingId:string|null}
+  let saveTimeout = null;
+  let loaded = false;
+
+  const app = document.getElementById('app');
+
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+  function escapeHtml(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function round(n){ return Math.round(parseFloat(n)||0); }
+
+  function locationColor(loc){
+    if(loc==='Belfast') return 'var(--belfast)';
+    if(loc==='Greece') return 'var(--greece)';
+    return 'var(--rose)';
+  }
+  function defaultCurrencyFor(){ return 'GBP'; }
+
+  function fmt(amount, currency){
+    const sym = CURRENCY_SYMBOLS[currency] || '';
+    return sym + round(amount).toLocaleString('en-GB');
+  }
+
+  function findTrip(id){ return state.trips.find(function(t){ return t.id===id; }); }
+  function categoryByName(name){ return state.categories.find(function(c){ return c.name===name; }); }
+
+  function fixedTotal(trip){
+    return FIXED_ITEMS.reduce(function(s,f){ return s + round(trip.fixedCosts[f.key]); }, 0);
+  }
+  function listTotal(trip, key){
+    return (trip[key]||[]).reduce(function(s,e){ return s + round(e.cost); }, 0);
+  }
+  function tripTotal(trip){
+    return fixedTotal(trip) + ITEM_SECTIONS.reduce(function(s,sec){ return s + listTotal(trip, sec.key); }, 0);
+  }
+  function tripsForLocation(loc){
+    return state.trips.filter(function(t){ return t.location===loc; });
+  }
+  function nightsForLocation(loc){
+    return tripsForLocation(loc).reduce(function(s,t){ return s + (parseInt(t.nights)||0); }, 0);
+  }
+  function visibleLocations(){
+    return state.locations.filter(function(l){ return HIDDEN_LOCATIONS.indexOf(l)===-1; });
+  }
+  function locationLabel(loc){
+    return LOCATION_LABELS[loc] || loc;
+  }
+  function visibleTrips(){
+    return state.trips.filter(function(t){ return HIDDEN_LOCATIONS.indexOf(t.location)===-1 && t.location!==PLANNING_LOCATION; });
+  }
+  function ensurePlanningTrip(){
+    let p = state.trips.find(function(t){ return t.location===PLANNING_LOCATION; });
+    if(!p){
+      p = {
+        id: uid(), name:'Planning Trip', location:PLANNING_LOCATION, startDate:'', endDate:'',
+        currency: defaultCurrencyFor(), nights: 0,
+        fixedCosts: FIXED_ITEMS.reduce(function(o,f){ o[f.key]=0; return o; }, {})
+      };
+      ITEM_SECTIONS.forEach(function(sec){ p[sec.key] = []; });
+      state.trips.push(p);
+      saveState();
+    }
+    return p;
+  }
+  function bucketAmountForTrip(trip, bucketKey){
+    if(bucketKey==='flights') return round(trip.fixedCosts.flight1) + round(trip.fixedCosts.flight2);
+    if(bucketKey==='accommodation') return round(trip.fixedCosts.accommodation);
+    if(bucketKey==='collectionTransfer') return round(trip.fixedCosts.collectionTransfer);
+    if(bucketKey==='spending' || bucketKey==='medication' || bucketKey==='tests') return listTotal(trip, bucketKey);
+    return 0;
+  }
+  function bucketTotalsByCurrency(bucketKey){
+    const totals = {};
+    visibleTrips().forEach(function(t){
+      totals[t.currency] = (totals[t.currency]||0) + bucketAmountForTrip(t, bucketKey);
+    });
+    return totals;
+  }
+  function overviewGrandTotalsByCurrency(){
+    const totals = {};
+    visibleTrips().forEach(function(t){ totals[t.currency] = (totals[t.currency]||0) + tripTotal(t); });
+    return totals;
+  }
+  // Line-by-line rows for the Breakdown tab, for a given bucket, across all visible trips.
+  function breakdownRows(bucketKey){
+    const rows = [];
+    visibleTrips().forEach(function(trip){
+      if(bucketKey==='flights'){
+        if(round(trip.fixedCosts.flight1)) rows.push({tripName:trip.name, date:trip.startDate, item:'Flights To Greece', cost:round(trip.fixedCosts.flight1), currency:trip.currency});
+        if(round(trip.fixedCosts.flight2)) rows.push({tripName:trip.name, date:trip.endDate, item:'Flights Home', cost:round(trip.fixedCosts.flight2), currency:trip.currency});
+      } else if(bucketKey==='accommodation'){
+        if(round(trip.fixedCosts.accommodation)) rows.push({
+          tripName: trip.name,
+          date: trip.startDate,
+          dateRange: formatDateRange(trip.startDate, trip.endDate),
+          item: trip.name + (trip.nights ? ' ('+trip.nights+' night'+(trip.nights===1?'':'s')+')' : ''),
+          cost: round(trip.fixedCosts.accommodation),
+          currency: trip.currency
+        });
+      } else if(bucketKey==='collectionTransfer'){
+        if(round(trip.fixedCosts.collectionTransfer)) rows.push({tripName:trip.name, date:trip.startDate, item:'Collection & Transfer', cost:round(trip.fixedCosts.collectionTransfer), currency:trip.currency});
+      } else if(bucketKey==='spending' || bucketKey==='medication' || bucketKey==='tests'){
+        (trip[bucketKey]||[]).forEach(function(e){
+          rows.push({tripName:trip.name, date:e.date, item:e.item, cost:round(e.cost), currency:trip.currency, category: e.category});
+        });
+      }
+    });
+    rows.sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
+    return rows;
+  }
+
+  /* ---------- import (paste from spreadsheet) ---------- */
+  function parseImportDate(raw){
+    raw = (raw||'').trim();
+    let m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); // DD/MM/YYYY
+    if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+    m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/); // YYYY-MM-DD (with or without time)
+    if(m) return m[0].slice(0,10);
+    return todayISO();
+  }
+  function parseImportRows(text){
+    return text.split('\n')
+      .map(function(l){ return l.replace(/\r/g,''); })
+      .filter(function(l){ return l.trim().length; })
+      .map(function(l){
+        let parts = l.split('\t');
+        if(parts.length<4) parts = l.split(',');
+        return parts.map(function(p){ return p.trim(); });
+      })
+      .filter(function(parts){ return parts.length>=4 && parts[0]; });
+  }
+  function importEntriesToTrip(tripId, text){
+    const trip = findTrip(tripId);
+    if(!trip) return 0;
+    const rows = parseImportRows(text);
+    let added = 0;
+    rows.forEach(function(parts){
+      const item = parts[0];
+      const cost = round(String(parts[1]).replace(/[£€$,]/g,''));
+      const catRaw = (parts[2]||'').trim();
+      const date = parseImportDate(parts[3]);
+      const route = IMPORT_CATEGORY_ROUTES[catRaw.toLowerCase()];
+      if(route && route.type==='medication'){
+        trip.medication.push({ id:uid(), date:date, item:item, cost:cost });
+      } else if(route && route.type==='tests'){
+        trip.tests.push({ id:uid(), date:date, item:item, cost:cost });
+      } else {
+        const catName = route ? route.category : (catRaw || 'Other');
+        if(!categoryByName(catName)){
+          state.categories.push({ name:catName, color: PALETTE[state.categories.length % PALETTE.length] });
+        }
+        trip.spending.push({ id:uid(), date:date, item:item, cost:cost, category:catName });
+      }
+      added++;
+    });
+    if(added) saveStateDebounced();
+    return added;
+  }
+
+  /* ---------- persistence (Firebase Auth + Firestore, synced across devices) ---------- */
+  function normalizeState(){
+    if(!state.locations || !state.locations.length) state.locations = ['Belfast','Greece'];
+    if(!state.categories || !state.categories.length) state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+    if(!Array.isArray(state.trips)) state.trips = [];
+
+    state.trips.forEach(function(t){
+      if(!t.fixedCosts) t.fixedCosts = {};
+      // migrate any old medication/tests fixed amounts into itemized entries
+      ['medication','tests'].forEach(function(oldKey){
+        if(t.fixedCosts[oldKey] && parseFloat(t.fixedCosts[oldKey])>0){
+          t[oldKey] = t[oldKey] || [];
+          t[oldKey].push({ id: uid(), date: t.startDate||todayISO(), item:'Migrated total', cost: round(t.fixedCosts[oldKey]) });
+        }
+        delete t.fixedCosts[oldKey];
+      });
+      FIXED_ITEMS.forEach(function(f){ if(t.fixedCosts[f.key]==null) t.fixedCosts[f.key]=0; });
+      ITEM_SECTIONS.forEach(function(sec){ if(!t[sec.key]) t[sec.key]=[]; });
+      if(t.nights==null) t.nights = 0;
+      if(!t.currency) t.currency = defaultCurrencyFor();
+    });
+  }
+
+  function saveState(){
+    if(!currentUser || !db) return;
+    db.collection('ivfTrackerData').doc(currentUser.uid).set({
+      state: state,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(function(e){ console.error('Save failed', e); });
+  }
+  function saveStateDebounced(){
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(saveState, 500);
+  }
+
+  function startFirestoreSync(){
+    const docRef = db.collection('ivfTrackerData').doc(currentUser.uid);
+    if(unsubscribeSnapshot) unsubscribeSnapshot();
+    unsubscribeSnapshot = docRef.onSnapshot(function(snap){
+      // Skip snapshots caused by our own not-yet-confirmed local writes — only react to
+      // the initial load and to confirmed changes (e.g. made from another device).
+      if(snap.metadata.hasPendingWrites) return;
+      if(snap.exists){
+        const data = snap.data();
+        if(data && data.state){
+          state = data.state;
+          normalizeState();
+          loaded = true;
+          render();
+        }
+      } else {
+        // First sign-in on this account: bring across anything saved locally by the
+        // previous browser-only version of this app, then push it up as the initial doc.
+        let migrated = null;
+        try{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if(raw) migrated = JSON.parse(raw);
+        }catch(e){ /* nothing to migrate */ }
+        state = (migrated && Array.isArray(migrated.trips))
+          ? migrated
+          : { locations:['Belfast','Greece'], trips:[], categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)) };
+        normalizeState();
+        loaded = true;
+        saveState();
+        render();
+      }
+    }, function(err){
+      console.error('Sync error', err);
+    });
+  }
+
+  function authErrorMessage(err){
+    const code = (err && err.code) || '';
+    if(code.indexOf('wrong-password')>-1 || code.indexOf('invalid-credential')>-1 || code.indexOf('user-not-found')>-1) return 'Incorrect email or password.';
+    if(code.indexOf('invalid-email')>-1) return 'That email address looks wrong.';
+    if(code.indexOf('too-many-requests')>-1) return 'Too many attempts — try again in a bit.';
+    return 'Sign-in failed. Please try again.';
+  }
+
+  function showAuthScreen(){
+    const el = document.getElementById('auth-screen');
+    if(el) el.style.display = 'flex';
+  }
+  function hideAuthScreen(){
+    const el = document.getElementById('auth-screen');
+    if(el) el.style.display = 'none';
+  }
+
+  function initAuthUI(){
+    const btn = document.getElementById('auth-signin-btn');
+    const emailEl = document.getElementById('auth-email');
+    const passEl = document.getElementById('auth-password');
+    const errEl = document.getElementById('auth-error');
+    function doSignIn(){
+      errEl.textContent = '';
+      const email = emailEl.value.trim();
+      const pass = passEl.value;
+      if(!email || !pass){ errEl.textContent = 'Enter your email and password.'; return; }
+      btn.disabled = true; btn.textContent = 'Signing in…';
+      auth.signInWithEmailAndPassword(email, pass).catch(function(err){
+        errEl.textContent = authErrorMessage(err);
+      }).finally(function(){
+        btn.disabled = false; btn.textContent = 'Sign In';
+      });
+    }
+    btn.addEventListener('click', doSignIn);
+    passEl.addEventListener('keydown', function(e){ if(e.key==='Enter') doSignIn(); });
+    emailEl.addEventListener('keydown', function(e){ if(e.key==='Enter') passEl.focus(); });
+  }
+
+  function initApp(){
+    if(!firebaseReady){
+      app.innerHTML = '<div class="loading">Could not connect — check your internet connection and reload.</div>';
+      return;
+    }
+    initAuthUI();
+    auth.onAuthStateChanged(function(user){
+      if(user){
+        currentUser = user;
+        hideAuthScreen();
+        startFirestoreSync();
+      } else {
+        currentUser = null;
+        loaded = false;
+        if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+        showAuthScreen();
+      }
+    });
+  }
+
+  /* ---------- rendering ---------- */
+  function render(resetScroll){
+    if(!loaded){ app.innerHTML = '<div class="loading">Loading your journey…</div>'; return; }
+    const savedScrollTop = app.scrollTop;
+    const tabsEl = app.querySelector('.tabs');
+    const savedTabsScrollLeft = tabsEl ? tabsEl.scrollLeft : 0;
+    const bdFiltersEl = app.querySelector('.bd-filters');
+    const savedBdScrollLeft = bdFiltersEl ? bdFiltersEl.scrollLeft : 0;
+    let html = renderHeader();
+    html += '<main class="main">';
+    if(currentTab==='overview') html += renderOverview();
+    else if(currentTab==='dashboard') html += renderDashboardTab();
+    else if(currentTab==='breakdown') html += renderBreakdown();
+    else if(currentTab==='planning') html += renderPlanningTab();
+    else html += renderLocationTab(currentTab);
+    html += '</main>';
+    if(modalState.open) html += renderModal();
+    if(importState.open) html += renderImportModal();
+    if(confirmState.open) html += renderConfirmModal();
+    app.innerHTML = html;
+    app.scrollTop = resetScroll ? 0 : savedScrollTop;
+    const newTabsEl = app.querySelector('.tabs');
+    if(newTabsEl) newTabsEl.scrollLeft = savedTabsScrollLeft;
+    const newBdFiltersEl = app.querySelector('.bd-filters');
+    if(newBdFiltersEl) newBdFiltersEl.scrollLeft = savedBdScrollLeft;
+  }
+
+  function renderHeader(){
+    let tabs = '<div class="tab' + (currentTab==='overview'?' active':'') + '" data-action="switch-tab" data-tab="overview">Overview</div>';
+    tabs += '<div class="tab' + (currentTab==='dashboard'?' active':'') + '" data-action="switch-tab" data-tab="dashboard">Dashboard</div>';
+    visibleLocations().forEach(function(loc){
+      const isOther = loc!=='Belfast' && loc!=='Greece';
+      tabs += '<div class="tab' + (currentTab===loc?' active':'') + (isOther?' other-loc':'') + '" data-loc="'+escapeHtml(loc)+'" data-action="switch-tab" data-tab="'+escapeHtml(loc)+'">'+escapeHtml(locationLabel(loc))+'</div>';
+    });
+    tabs += '<div class="tab' + (currentTab==='breakdown'?' active':'') + '" data-action="switch-tab" data-tab="breakdown">Breakdown</div>';
+    tabs += '<div class="tab' + (currentTab==='planning'?' active':'') + '" data-action="switch-tab" data-tab="planning">Planning</div>';
+    return '' +
+      '<div class="app-header">' +
+        '<button class="signout-link" data-action="sign-out">Sign out</button>' +
+        '<h1 class="app-title serif">IVF Expenses</h1>' +
+        '<div class="tabs">'+tabs+'</div>' +
+      '</div>';
+  }
+
+  function renderOverview(){
+    if(!visibleTrips().length){
+      return '' +
+        '<div class="empty-state">' +
+          '<h3 class="serif">Your journey starts here</h3>' +
+          '<p>Add your first trip to start tracking flights, accommodation, treatment costs and day-to-day spending.</p>' +
+          '<button class="btn btn-primary" data-action="open-add-trip">Add a trip</button>' +
+        '</div>';
+    }
+
+    const grand = overviewGrandTotalsByCurrency();
+    const currencies = Object.keys(grand);
+    let heroHtml = '<div class="hero"><div class="hero-label">Total spent so far</div><div class="hero-totals">';
+    currencies.forEach(function(cur){
+      heroHtml += '<div><div class="hero-total-num mono">'+fmt(grand[cur],cur)+'</div><div class="hero-total-cur">'+cur+'</div></div>';
+    });
+    heroHtml += '</div><div class="hero-sub">Across '+visibleTrips().length+' trip'+(visibleTrips().length===1?'':'s')+'</div></div>';
+
+    let cardsHtml = '<div class="section-title">By category</div><div class="loc-cards">';
+
+    const trips = visibleTrips();
+    const totalNights = trips.reduce(function(s,t){ return s + (parseInt(t.nights)||0); }, 0);
+    const avgCur = trips.length ? trips[0].currency : defaultCurrencyFor();
+
+    let flightSum = 0, flightCount = 0;
+    trips.forEach(function(t){
+      const f1 = round(t.fixedCosts.flight1), f2 = round(t.fixedCosts.flight2);
+      if(f1){ flightSum += f1; flightCount++; }
+      if(f2){ flightSum += f2; flightCount++; }
+    });
+    const avgFlight = flightCount ? Math.round(flightSum/flightCount) : null;
+
+    const accomTotal = trips.reduce(function(s,t){ return s + round(t.fixedCosts.accommodation); }, 0);
+    const avgPerNight = totalNights ? Math.round(accomTotal/totalNights) : null;
+
+    const spendTotal = trips.reduce(function(s,t){ return s + listTotal(t,'spending'); }, 0);
+    const avgPerDay = totalNights ? Math.round(spendTotal/totalNights) : null;
+
+    OVERVIEW_BUCKETS.forEach(function(b){
+      const totals = bucketTotalsByCurrency(b.key);
+      const curs = Object.keys(totals);
+      const amtStr = curs.length ? curs.map(function(c){ return fmt(totals[c],c); }).join(' · ') : fmt(0,defaultCurrencyFor());
+
+      let avgHtml = '';
+      if(b.key==='flights' && avgFlight!=null) avgHtml = '<div class="loc-card-avg">Avg Flight: '+fmt(avgFlight,avgCur)+'</div>';
+      else if(b.key==='accommodation' && avgPerNight!=null) avgHtml = '<div class="loc-card-avg">Avg per night: '+fmt(avgPerNight,avgCur)+'</div>';
+      else if(b.key==='spending' && avgPerDay!=null) avgHtml = '<div class="loc-card-avg">Avg per day: '+fmt(avgPerDay,avgCur)+'</div>';
+
+      cardsHtml += '' +
+        '<div class="loc-card" data-action="open-breakdown" data-bucket="'+b.key+'">' +
+          '<div class="loc-card-name">'+b.label+'</div>' +
+          '<div class="loc-card-amt mono">'+amtStr+'</div>' +
+          avgHtml +
+        '</div>';
+    });
+    cardsHtml += '</div>';
+
+    return heroHtml + cardsHtml +
+      '<button class="reset-link" data-action="reset-data">Reset all data</button>';
+  }
+
+  function renderBreakdown(){
+    let pills = '<div class="bd-filters">';
+    OVERVIEW_BUCKETS.forEach(function(b){
+      pills += '<div class="bd-pill'+(breakdownState.activeBucket===b.key?' active':'')+'" data-action="switch-breakdown" data-bucket="'+b.key+'">'+b.label+'</div>';
+    });
+    pills += '</div>';
+
+    if(!visibleTrips().length){
+      return pills + '' +
+        '<div class="empty-state">' +
+          '<h3 class="serif">Nothing to show yet</h3>' +
+          '<p>Add a trip and log some costs, then come back here to see them line by line.</p>' +
+        '</div>';
+    }
+
+    const bucket = OVERVIEW_BUCKETS.find(function(b){ return b.key===breakdownState.activeBucket; }) || OVERVIEW_BUCKETS[0];
+    const rows = breakdownRows(bucket.key);
+    const totals = bucketTotalsByCurrency(bucket.key);
+    const curs = Object.keys(totals);
+    const totalStr = curs.length ? curs.map(function(c){ return fmt(totals[c],c); }).join(' · ') : fmt(0,defaultCurrencyFor());
+
+    let html = pills;
+    html += '<div class="section-title">'+bucket.label+'</div>';
+    html += '<div class="bd-total mono">'+totalStr+'</div>';
+
+    if(!rows.length){
+      html += '<div style="font-size:13px;color:var(--ink-faint);">No '+bucket.label.toLowerCase()+' logged yet.</div>';
+      return html;
+    }
+
+    if(bucket.key==='spending'){
+      html += renderBdGroups(bucket.key, rows, 'category');
+    } else if(bucket.key==='medication' || bucket.key==='tests'){
+      html += renderBdGroups(bucket.key, rows, 'trip');
+    } else {
+      html += '<div class="item-list">';
+      rows.forEach(function(r){ html += renderBdRow(r, true, false); });
+      html += '</div>';
+    }
+
+    return html;
+  }
+
+  function renderBdGroups(bucketKey, rows, groupBy){
+    const groups = {};
+    rows.forEach(function(r){
+      const gname = groupBy==='category' ? (r.category || 'Other') : r.tripName;
+      groups[gname] = groups[gname] || [];
+      groups[gname].push(r);
+    });
+    const names = Object.keys(groups).sort(function(a,b){
+      if(groupBy==='trip'){
+        const minA = groups[a].reduce(function(m,r){ return (!m || (r.date||'')<m) ? (r.date||'') : m; }, null) || '';
+        const minB = groups[b].reduce(function(m,r){ return (!m || (r.date||'')<m) ? (r.date||'') : m; }, null) || '';
+        return minA.localeCompare(minB);
+      }
+      const sumA = groups[a].reduce(function(s,r){ return s+r.cost; }, 0);
+      const sumB = groups[b].reduce(function(s,r){ return s+r.cost; }, 0);
+      return sumB - sumA;
+    });
+
+    let html = '';
+    names.forEach(function(name){
+      const groupRows = groups[name];
+      const groupKey = bucketKey+'|'+name;
+      const isOpen = expandedBdGroups.has(groupKey);
+      const total = groupRows.reduce(function(s,r){ return s+r.cost; }, 0);
+      const cur = groupRows.length ? groupRows[0].currency : defaultCurrencyFor();
+
+      let headerLeft;
+      if(groupBy==='category'){
+        const cat = categoryByName(name);
+        const color = cat ? cat.color : '#999';
+        headerLeft = '<span class="chip" style="background:'+color+';">'+escapeHtml(name)+'</span>';
+      } else {
+        headerLeft = '<span class="bd-group-name">'+escapeHtml(name)+'</span>';
+      }
+
+      html += '' +
+        '<div class="bd-cat-group">' +
+          '<div class="bd-cat-header" data-action="toggle-bd-group" data-group-key="'+escapeHtml(groupKey)+'">' +
+            headerLeft +
+            '<span class="ish-right"><span class="bd-cat-total mono">'+fmt(total,cur)+'</span><span class="chev'+(isOpen?' open':'')+'">▾</span></span>' +
+          '</div>';
+      if(isOpen){
+        html += '<div class="item-list">';
+        groupRows.forEach(function(r){ html += renderBdRow(r, groupBy==='category', groupBy==='trip'); });
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    return html;
+  }
+
+  function renderBdRow(r, showChip, hideTripName){
+    let chip = '';
+    if(showChip && r.category){
+      const cat = categoryByName(r.category);
+      const color = cat ? cat.color : '#999';
+      chip = '<span class="chip" style="background:'+color+';">'+escapeHtml(r.category)+'</span>';
+    }
+    let metaText;
+    if(r.dateRange) metaText = escapeHtml(r.dateRange);
+    else if(hideTripName) metaText = r.date ? formatDateShort(r.date) : '';
+    else metaText = escapeHtml(r.tripName)+(r.date?' · '+formatDateShort(r.date):'');
+    return '' +
+      '<div class="item-row">' +
+        '<div class="item-row-main">' +
+          '<div class="item-row-name">'+escapeHtml(r.item)+'</div>' +
+          '<div class="item-row-meta"><span class="item-row-date">'+metaText+'</span>'+chip+'</div>' +
+        '</div>' +
+        '<div class="item-row-cost mono">'+fmt(r.cost,r.currency)+'</div>' +
+      '</div>';
+  }
+
+  function dashCellValue(trip, row){
+    if(row.type==='fixed') return round(trip.fixedCosts[row.key]);
+    return listTotal(trip, row.key);
+  }
+
+  function renderDashboardTab(){
+    const trips = visibleTrips().slice().sort(function(a,b){ return (a.startDate||'').localeCompare(b.startDate||''); });
+    if(!trips.length){
+      return '' +
+        '<div class="empty-state">' +
+          '<h3 class="serif">Nothing to show yet</h3>' +
+          '<p>Add a trip to see the full spreadsheet-style breakdown here.</p>' +
+        '</div>';
+    }
+    const totalsCur = trips[0].currency;
+
+    function rowCells(row){
+      let total = 0;
+      const cells = trips.map(function(t){
+        const v = dashCellValue(t, row);
+        total += v;
+        return '<td>'+fmt(v, t.currency)+'</td>';
+      }).join('');
+      return { cells:cells, total:total };
+    }
+    function blockRow(row){
+      const r = rowCells(row);
+      return '<tr><td class="dash-row-label">'+row.label+'</td>'+r.cells+'<td class="dash-total-col">'+fmt(r.total, totalsCur)+'</td></tr>';
+    }
+    function subtotalRow(rows, extraClass){
+      const perTrip = trips.map(function(t){ return rows.reduce(function(s,row){ return s+dashCellValue(t,row); }, 0); });
+      const total = perTrip.reduce(function(a,b){ return a+b; }, 0);
+      const cells = perTrip.map(function(v,i){ return '<td>'+fmt(v, trips[i].currency)+'</td>'; }).join('');
+      return { html:'<tr class="'+extraClass+'"><td class="dash-row-label">'+(extraClass==='dash-grand-total'?'Total':'')+'</td>'+cells+'<td class="dash-total-col">'+fmt(total,totalsCur)+'</td></tr>', perTrip:perTrip, total:total };
+    }
+
+    let html = '<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th class="dash-row-label"></th>';
+    trips.forEach(function(t){ html += '<th>'+escapeHtml(t.name)+'</th>'; });
+    html += '<th class="dash-total-col">Total</th></tr></thead><tbody>';
+
+    DASH_TOP_ROWS.forEach(function(row){ html += blockRow(row); });
+    const sub1 = subtotalRow(DASH_TOP_ROWS, 'dash-subtotal');
+    html += sub1.html;
+
+    DASH_BOTTOM_ROWS.forEach(function(row){ html += blockRow(row); });
+    const sub2 = subtotalRow(DASH_BOTTOM_ROWS, 'dash-subtotal');
+    html += sub2.html;
+
+    const grandPerTrip = trips.map(function(t,i){ return sub1.perTrip[i] + sub2.perTrip[i]; });
+    const grandTotal = sub1.total + sub2.total;
+    html += '<tr class="dash-grand-total"><td class="dash-row-label">Total</td>' +
+      grandPerTrip.map(function(v,i){ return '<td>'+fmt(v, trips[i].currency)+'</td>'; }).join('') +
+      '<td class="dash-total-col">'+fmt(grandTotal, totalsCur)+'</td></tr>';
+
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function formatDateShort(iso){
+    if(!iso) return '';
+    const d = new Date(iso+'T00:00:00');
+    if(isNaN(d)) return iso;
+    return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  }
+  function formatDateRange(a,b){
+    if(!a && !b) return 'No dates set';
+    if(a && b) return formatDateShort(a)+' – '+formatDateShort(b);
+    return formatDateShort(a||b);
+  }
+
+  function renderLocationTab(loc){
+    const trips = tripsForLocation(loc);
+    const nights = nightsForLocation(loc);
+    let html = '<div class="loc-tab-header"><div class="section-title" style="margin-bottom:0;">'+escapeHtml(locationLabel(loc))+'</div>' +
+      (nights ? '<div class="loc-nights-pill" id="nights-pill-'+escapeHtml(loc)+'">'+nights+' night'+(nights===1?'':'s')+' total</div>' : '<div class="loc-nights-pill" id="nights-pill-'+escapeHtml(loc)+'" style="display:none;"></div>') +
+      '</div>';
+    if(!trips.length){
+      html += '' +
+        '<div class="empty-state">' +
+          '<h3 class="serif">No trips yet</h3>' +
+          '<p>Add a trip to '+escapeHtml(locationLabel(loc))+' to start tracking its costs.</p>' +
+          '<button class="btn btn-primary" data-action="open-add-trip" data-preset-location="'+escapeHtml(loc)+'">Add a trip</button>' +
+        '</div>';
+      return html;
+    }
+    trips.forEach(function(t){ html += renderTripCard(t); });
+    html += '<button class="btn btn-primary btn-full" data-action="open-add-trip" data-preset-location="'+escapeHtml(loc)+'" style="margin-top:6px;">+ Add trip</button>';
+    return html;
+  }
+
+  function renderTripCard(trip){
+    const isOpen = expandedTrips.has(trip.id);
+    const total = tripTotal(trip);
+    let html = '<div class="trip-card" id="trip-'+trip.id+'">';
+    html += '' +
+      '<div class="trip-head" data-action="toggle-trip" data-trip-id="'+trip.id+'">' +
+        '<div class="trip-head-left">' +
+          '<p class="trip-name">'+escapeHtml(trip.name)+'</p>' +
+          '<div class="trip-dates" id="trip-dates-'+trip.id+'">'+formatDateRange(trip.startDate,trip.endDate)+(trip.nights?' · '+trip.nights+' night'+(trip.nights===1?'':'s'):'')+'</div>' +
+        '</div>' +
+        '<div class="trip-head-right">' +
+          '<div class="trip-total-amt mono" id="trip-total-'+trip.id+'">'+fmt(total,trip.currency)+'</div>' +
+          '<div class="chev'+(isOpen?' open':'')+'">▾</div>' +
+        '</div>' +
+      '</div>';
+
+    if(isOpen){
+      html += '<div class="trip-body">';
+
+      // fixed costs
+      html += '<div class="fixed-grid">';
+      FIXED_ITEMS.forEach(function(f){
+        const val = trip.fixedCosts[f.key] || 0;
+        html += '' +
+          '<div class="fixed-row"><label>'+f.label+'</label>' +
+            '<div class="fixed-input-wrap">' +
+              '<span>'+CURRENCY_SYMBOLS[trip.currency]+'</span>' +
+              '<input type="number" inputmode="numeric" step="1" class="fixed-cost-input" data-trip-id="'+trip.id+'" data-key="'+f.key+'" value="'+round(val)+'">' +
+            '</div>' +
+          '</div>';
+        if(f.hasNights){
+          html += '' +
+            '<div class="fixed-row nights-row"><label>Nights</label>' +
+              '<div class="fixed-input-wrap nights-wrap">' +
+                '<input type="number" inputmode="numeric" step="1" min="0" class="nights-input" data-trip-id="'+trip.id+'" value="'+(trip.nights||0)+'">' +
+                '<span class="nights-suffix">nts</span>' +
+              '</div>' +
+            '</div>';
+        }
+      });
+      html += '<div class="subtotal-row"><span>Fixed costs subtotal</span><span class="mono" id="fixed-sub-'+trip.id+'">'+fmt(fixedTotal(trip),trip.currency)+'</span></div>';
+      html += '</div>';
+
+      // itemized sections: medication, tests, spending money
+      ITEM_SECTIONS.forEach(function(sec){
+        html += renderItemSection(trip, sec);
+      });
+
+      html += '<div class="subtotal-row" style="border-top:1px solid var(--border);margin-top:16px;"><span>Trip total</span><span class="mono">'+fmt(total,trip.currency)+'</span></div>';
+
+      if(trip.location===PLANNING_LOCATION){
+        html += '' +
+          '<div class="trip-actions">' +
+            '<button class="btn btn-ghost btn-sm" data-action="reset-planning" data-trip-id="'+trip.id+'">Reset planning trip</button>' +
+          '</div>';
+      } else {
+        html += '' +
+          '<div class="trip-actions">' +
+            '<button class="btn btn-ghost btn-sm" data-action="open-import" data-trip-id="'+trip.id+'">Import entries</button>' +
+            '<button class="btn btn-ghost btn-sm" data-action="open-edit-trip" data-trip-id="'+trip.id+'">Edit trip</button>' +
+            '<button class="btn btn-danger btn-sm" data-action="delete-trip" data-trip-id="'+trip.id+'">Delete trip</button>' +
+          '</div>';
+      }
+
+      html += '</div>'; // trip-body
+    }
+    html += '</div>'; // trip-card
+    return html;
+  }
+
+  function renderPlanningTab(){
+    const trip = ensurePlanningTrip();
+    expandedTrips.add(trip.id);
+    return '' +
+      '<div class="section-title">Planning</div>' +
+      '<div style="font-size:13px;color:var(--ink-soft);margin:-6px 0 16px 0;">A sandbox trip for budgeting future costs — it never counts toward your Overview or Dashboard totals.</div>' +
+      renderTripCard(trip);
+  }
+
+  let expandedItemSections = new Set(); // "tripId|sectionKey" — sections start collapsed unless opened
+  let expandedBdGroups = new Set(); // "bucketKey|groupName" expanded in the Breakdown tab (category or trip groups)
+
+  function renderItemSection(trip, sec){
+    const key = sec.key;
+    const uiKey = trip.id+'|'+key;
+    const ui = itemUI[uiKey] || {};
+    const isOpen = expandedItemSections.has(uiKey) || ui.adding;
+    const entries = (trip[key]||[]).slice().sort(function(a,b){
+      if(key==='medication' || key==='tests') return round(b.cost) - round(a.cost);
+      if(key==='spending') return (a.date||'').localeCompare(b.date||'');
+      return (b.date||'').localeCompare(a.date||'');
+    });
+    const subtotal = fmt(listTotal(trip,key), trip.currency);
+
+    let html = '<div class="item-section">';
+    html += '' +
+      '<div class="item-section-header" data-action="toggle-item-section" data-trip-id="'+trip.id+'" data-list-key="'+key+'">' +
+        '<span class="ish-title">'+sec.title+'</span>' +
+        '<span class="ish-right"><span class="ish-amt mono" id="'+key+'-sub-'+trip.id+'">'+subtotal+'</span><span class="chev'+(isOpen?' open':'')+'">▾</span></span>' +
+      '</div>';
+
+    if(!isOpen){
+      html += '</div>';
+      return html;
+    }
+
+    if(entries.length){
+      html += '<div class="item-list">';
+      entries.forEach(function(e){
+        let chip = '';
+        if(sec.hasCategory){
+          const cat = categoryByName(e.category);
+          const color = cat ? cat.color : '#999';
+          chip = '<span class="chip" style="background:'+color+';">'+escapeHtml(e.category)+'</span>';
+        }
+        html += '' +
+          '<div class="item-row">' +
+            '<div class="item-row-main">' +
+              '<div class="item-row-name">'+escapeHtml(e.item)+'</div>' +
+              '<div class="item-row-meta"><span class="item-row-date">'+formatDateShort(e.date)+'</span>'+chip+'</div>' +
+            '</div>' +
+            '<div class="item-row-cost mono">'+fmt(e.cost,trip.currency)+'</div>' +
+            '<div class="item-row-actions">' +
+              '<button class="icon-btn" data-action="edit-item" data-trip-id="'+trip.id+'" data-list-key="'+key+'" data-item-id="'+e.id+'" title="Edit">✎</button>' +
+              '<button class="icon-btn" data-action="delete-item" data-trip-id="'+trip.id+'" data-list-key="'+key+'" data-item-id="'+e.id+'" title="Delete">✕</button>' +
+            '</div>' +
+          '</div>';
+      });
+      html += '</div>';
+    }
+
+    if(ui.adding){
+      html += renderItemForm(trip, sec, ui.editingId);
+    } else {
+      html += '<button class="btn btn-sm add-entry-btn" data-action="add-item-open" data-trip-id="'+trip.id+'" data-list-key="'+key+'">+ Add '+sec.title.toLowerCase()+' entry</button>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function renderItemForm(trip, sec, editingId){
+    const key = sec.key;
+    const entry = editingId ? (trip[key]||[]).find(function(e){ return e.id===editingId; }) : null;
+    let catField = '';
+    if(sec.hasCategory){
+      let catOptions = state.categories.map(function(c){
+        return '<option value="'+escapeHtml(c.name)+'"'+(entry&&entry.category===c.name?' selected':'')+'>'+escapeHtml(c.name)+'</option>';
+      }).join('');
+      catOptions += '<option value="__new__">+ Add new category…</option>';
+      catField = '' +
+        '<div class="form-row"><label>Category</label><select class="if-category">'+catOptions+'</select>' +
+          '<input type="text" class="if-category-new" placeholder="New category name" style="display:none;margin-top:8px;">' +
+        '</div>';
+    }
+
+    return '' +
+      '<div class="item-form">' +
+        '<div class="form-grid-2">' +
+          '<div class="form-row"><label>Date</label><input type="date" class="if-date" value="'+(entry?entry.date:todayISO())+'"></div>' +
+          '<div class="form-row"><label>Cost ('+trip.currency+')</label><input type="number" inputmode="numeric" step="1" class="if-cost" placeholder="0" value="'+(entry?round(entry.cost):'')+'"></div>' +
+        '</div>' +
+        '<div class="form-row"><label>Item</label><input type="text" class="if-item" placeholder="e.g. '+(sec.key==='medication'?'Progesterone':sec.key==='tests'?'Blood test':'Taxi to clinic')+'" value="'+(entry?escapeHtml(entry.item):'')+'"></div>' +
+        catField +
+        '<div class="form-btn-row">' +
+          '<button class="btn btn-primary btn-sm" data-action="save-item" data-trip-id="'+trip.id+'" data-list-key="'+key+'" data-item-id="'+(editingId||'')+'">'+(editingId?'Save changes':'Add entry')+'</button>' +
+          '<button class="btn btn-ghost btn-sm" data-action="cancel-item" data-trip-id="'+trip.id+'" data-list-key="'+key+'">Cancel</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderModal(){
+    const editing = modalState.mode==='edit' ? findTrip(modalState.tripId) : null;
+    const presetLoc = modalState.presetLocation;
+    let locList = visibleLocations();
+    // If editing a trip whose location is hidden, keep it selectable so saving doesn't silently move it.
+    if(editing && locList.indexOf(editing.location)===-1) locList = [editing.location].concat(locList);
+    let locOptions = locList.map(function(l){
+      const sel = editing ? editing.location===l : presetLoc===l;
+      return '<option value="'+escapeHtml(l)+'"'+(sel?' selected':'')+'>'+escapeHtml(locationLabel(l))+'</option>';
+    }).join('');
+    locOptions += '<option value="__new__">+ Add new location…</option>';
+
+    const currency = editing ? editing.currency : defaultCurrencyFor();
+    let curOptions = ['GBP','EUR','USD'].map(function(c){
+      return '<option value="'+c+'"'+(currency===c?' selected':'')+'>'+c+' ('+CURRENCY_SYMBOLS[c]+')</option>';
+    }).join('');
+
+    return '' +
+      '<div class="modal-overlay" data-action="overlay-close">' +
+        '<div class="modal">' +
+          '<h2 class="serif">'+(editing?'Edit trip':'Add a trip')+'</h2>' +
+          '<div class="form-row"><label>Trip name</label><input type="text" id="mf-name" placeholder="e.g. Cycle 1" value="'+(editing?escapeHtml(editing.name):'')+'"></div>' +
+          '<div class="form-row"><label>Location</label><select id="mf-location">'+locOptions+'</select>' +
+            '<input type="text" id="mf-location-new" placeholder="New location name" style="display:none;margin-top:8px;">' +
+          '</div>' +
+          '<div class="form-grid-2">' +
+            '<div class="form-row"><label>Start date</label><input type="date" id="mf-start" value="'+(editing?editing.startDate||'':'')+'"></div>' +
+            '<div class="form-row"><label>End date</label><input type="date" id="mf-end" value="'+(editing?editing.endDate||'':'')+'"></div>' +
+          '</div>' +
+          '<div class="form-row"><label>Currency</label><select id="mf-currency">'+curOptions+'</select></div>' +
+          '<div class="form-btn-row">' +
+            '<button class="btn btn-primary btn-full" data-action="save-trip">'+(editing?'Save changes':'Add trip')+'</button>' +
+          '</div>' +
+          '<div class="form-btn-row">' +
+            '<button class="btn btn-ghost btn-full" data-action="close-modal">Cancel</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderImportModal(){
+    const trip = findTrip(importState.tripId);
+    if(!trip) return '';
+    return '' +
+      '<div class="modal-overlay" data-action="close-import-overlay">' +
+        '<div class="modal">' +
+          '<h2 class="serif">Import entries</h2>' +
+          '<div class="import-help">' +
+            'Paste rows copied from your spreadsheet for <strong>'+escapeHtml(trip.name)+'</strong>. One entry per line, in this order: <strong>Item, Cost, Category, Date</strong> (tab or comma separated — copying straight out of Excel/Sheets works).<br><br>' +
+            'Category words like <em>Meds</em> or <em>Tests</em> are automatically filed into the Medication / Tests sections instead of Spending money.' +
+          '</div>' +
+          '<textarea class="import-textarea" id="import-text" placeholder="Airport Food	29	Food	23/11/2024\nTaxi from Airport	38.5	Uber	23/11/2024"></textarea>' +
+          '<div id="import-result"></div>' +
+          '<div class="form-btn-row" style="margin-top:12px;">' +
+            '<button class="btn btn-primary btn-full" data-action="submit-import">Import</button>' +
+          '</div>' +
+          '<div class="form-btn-row">' +
+            '<button class="btn btn-ghost btn-full" data-action="close-import">Close</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  /* ---------- actions ---------- */
+  function openAddTrip(presetLocation){
+    const fallback = visibleLocations().indexOf(currentTab)!==-1 ? currentTab : null;
+    modalState = { open:true, mode:'add', tripId:null, presetLocation: presetLocation || fallback };
+    render();
+  }
+  function openEditTrip(tripId){
+    modalState = { open:true, mode:'edit', tripId:tripId, presetLocation:null };
+    render();
+  }
+  function closeModal(){
+    modalState = { open:false, mode:'add', tripId:null, presetLocation:null };
+    render();
+  }
+
+  function saveTripFromModal(){
+    const nameEl = document.getElementById('mf-name');
+    const locEl = document.getElementById('mf-location');
+    const startEl = document.getElementById('mf-start');
+    const endEl = document.getElementById('mf-end');
+    const curEl = document.getElementById('mf-currency');
+
+    const name = nameEl.value.trim();
+    if(!name){ nameEl.focus(); return; }
+
+    let location = locEl.value;
+    if(location==='__new__'){
+      const newLocEl = document.getElementById('mf-location-new');
+      const newLoc = newLocEl.value.trim();
+      if(!newLoc){ newLocEl.focus(); return; }
+      location = newLoc;
+      if(state.locations.indexOf(location)===-1) state.locations.push(location);
+    }
+
+    const currency = curEl.value;
+    const startDate = startEl.value;
+    const endDate = endEl.value;
+
+    if(modalState.mode==='edit'){
+      const trip = findTrip(modalState.tripId);
+      trip.name = name; trip.location = location; trip.startDate = startDate; trip.endDate = endDate; trip.currency = currency;
+    } else {
+      const trip = {
+        id: uid(), name: name, location: location, startDate: startDate, endDate: endDate, currency: currency, nights: 0,
+        fixedCosts: FIXED_ITEMS.reduce(function(o,f){ o[f.key]=0; return o; }, {})
+      };
+      ITEM_SECTIONS.forEach(function(sec){ trip[sec.key] = []; });
+      state.trips.push(trip);
+    }
+    saveStateDebounced();
+    currentTab = location;
+    closeModal();
+  }
+
+  function deleteTrip(tripId){
+    const trip = findTrip(tripId);
+    if(!trip) return;
+    askConfirm('delete-trip', {tripId:tripId}, 'Delete "'+trip.name+'" and all its costs? This cannot be undone.');
+  }
+
+  function toggleTrip(tripId){
+    if(expandedTrips.has(tripId)) expandedTrips.delete(tripId);
+    else expandedTrips.add(tripId);
+    render();
+  }
+
+  function updateFixedCost(tripId, key, value){
+    const trip = findTrip(tripId);
+    if(!trip) return;
+    trip.fixedCosts[key] = round(value);
+    saveStateDebounced();
+    const fs = document.getElementById('fixed-sub-'+tripId);
+    const tt = document.getElementById('trip-total-'+tripId);
+    if(fs) fs.textContent = fmt(fixedTotal(trip), trip.currency);
+    if(tt) tt.textContent = fmt(tripTotal(trip), trip.currency);
+  }
+
+  function updateNights(tripId, value){
+    const trip = findTrip(tripId);
+    if(!trip) return;
+    trip.nights = Math.max(0, parseInt(value)||0);
+    saveStateDebounced();
+    const pill = document.getElementById('nights-pill-'+trip.location);
+    const totalNights = nightsForLocation(trip.location);
+    if(pill){
+      pill.style.display = totalNights ? '' : 'none';
+      pill.textContent = totalNights+' night'+(totalNights===1?'':'s')+' total';
+    }
+    const datesEl = document.getElementById('trip-dates-'+tripId);
+    if(datesEl){
+      datesEl.textContent = formatDateRange(trip.startDate,trip.endDate) + (trip.nights?' · '+trip.nights+' night'+(trip.nights===1?'':'s'):'');
+    }
+  }
+
+  function openAddItem(tripId, listKey){
+    itemUI[tripId+'|'+listKey] = { adding:true, editingId:null };
+    expandedItemSections.add(tripId+'|'+listKey);
+    render();
+  }
+  function openEditItem(tripId, listKey, itemId){
+    itemUI[tripId+'|'+listKey] = { adding:true, editingId:itemId };
+    expandedItemSections.add(tripId+'|'+listKey);
+    render();
+  }
+  function cancelItem(tripId, listKey){
+    itemUI[tripId+'|'+listKey] = { adding:false, editingId:null };
+    render();
+  }
+  function toggleItemSection(tripId, listKey){
+    const key = tripId+'|'+listKey;
+    if(expandedItemSections.has(key)) expandedItemSections.delete(key);
+    else expandedItemSections.add(key);
+    render();
+  }
+  function toggleBdGroup(groupKey){
+    if(expandedBdGroups.has(groupKey)) expandedBdGroups.delete(groupKey);
+    else expandedBdGroups.add(groupKey);
+    render();
+  }
+
+  function saveItem(tripId, listKey, itemId){
+    const trip = findTrip(tripId);
+    if(!trip) return;
+    const sec = ITEM_SECTIONS.find(function(s){ return s.key===listKey; });
+    const card = document.getElementById('trip-'+tripId);
+    const dateEl = card.querySelector('.if-date');
+    const costEl = card.querySelector('.if-cost');
+    const itemEl = card.querySelector('.if-item');
+    const catEl = sec.hasCategory ? card.querySelector('.if-category') : null;
+
+    const date = dateEl.value || todayISO();
+    const cost = round(costEl.value);
+    const item = itemEl.value.trim();
+    let category = catEl ? catEl.value : null;
+
+    if(category==='__new__'){
+      const newCatEl = card.querySelector('.if-category-new');
+      const newCat = newCatEl.value.trim();
+      if(!newCat){ newCatEl.focus(); return; }
+      category = newCat;
+      if(!categoryByName(category)){
+        const color = PALETTE[state.categories.length % PALETTE.length];
+        state.categories.push({name:category, color:color});
+      }
+    }
+
+    if(!item){ itemEl.focus(); return; }
+
+    trip[listKey] = trip[listKey] || [];
+    if(itemId){
+      const entry = trip[listKey].find(function(e){ return e.id===itemId; });
+      entry.date=date; entry.cost=cost; entry.item=item; if(category!=null) entry.category=category;
+    } else {
+      const newEntry = { id: uid(), date:date, cost:cost, item:item };
+      if(category!=null) newEntry.category = category;
+      trip[listKey].push(newEntry);
+    }
+    saveStateDebounced();
+    itemUI[tripId+'|'+listKey] = { adding:false, editingId:null };
+    render();
+  }
+
+  function deleteItem(tripId, listKey, itemId){
+    const trip = findTrip(tripId);
+    if(!trip) return;
+    askConfirm('delete-item', {tripId:tripId, listKey:listKey, itemId:itemId}, 'Delete this entry?');
+  }
+
+  function resetData(){
+    askConfirm('reset-data', {}, 'This will permanently delete all trips and spending data. Continue?');
+  }
+
+  /* ---------- confirm dialog (no native confirm() — blocked in sandboxed previews) ---------- */
+  let confirmState = { open:false, kind:null, payload:null, message:'', actionLabel:'Delete' };
+
+  function askConfirm(kind, payload, message, actionLabel){
+    confirmState = { open:true, kind:kind, payload:payload, message:message, actionLabel: actionLabel || 'Delete' };
+    render();
+  }
+  function closeConfirm(){
+    confirmState = { open:false, kind:null, payload:null, message:'', actionLabel:'Delete' };
+    render();
+  }
+  function runConfirmed(){
+    const kind = confirmState.kind;
+    const payload = confirmState.payload || {};
+    confirmState = { open:false, kind:null, payload:null, message:'', actionLabel:'Delete' };
+    if(kind==='delete-trip'){
+      state.trips = state.trips.filter(function(t){ return t.id!==payload.tripId; });
+      saveStateDebounced();
+    } else if(kind==='delete-item'){
+      const trip = findTrip(payload.tripId);
+      if(trip){
+        trip[payload.listKey] = (trip[payload.listKey]||[]).filter(function(e){ return e.id!==payload.itemId; });
+        saveStateDebounced();
+      }
+    } else if(kind==='reset-data'){
+      state = { locations:['Belfast','Greece'], trips:[], categories: JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)) };
+      saveState();
+      currentTab = 'overview';
+    } else if(kind==='reset-planning'){
+      const trip = findTrip(payload.tripId);
+      if(trip){
+        FIXED_ITEMS.forEach(function(f){ trip.fixedCosts[f.key] = 0; });
+        trip.nights = 0;
+        ITEM_SECTIONS.forEach(function(sec){ trip[sec.key] = []; });
+        saveStateDebounced();
+      }
+    }
+    render();
+  }
+  function renderConfirmModal(){
+    return '' +
+      '<div class="modal-overlay" data-action="close-confirm-overlay">' +
+        '<div class="modal">' +
+          '<h2 class="serif">Are you sure?</h2>' +
+          '<p style="font-size:14px;color:var(--ink-soft);margin:0 0 18px 0;">'+escapeHtml(confirmState.message)+'</p>' +
+          '<div class="form-btn-row">' +
+            '<button class="btn btn-full" style="background:var(--danger);border-color:var(--danger);color:#fff;" data-action="confirm-yes">'+escapeHtml(confirmState.actionLabel)+'</button>' +
+          '</div>' +
+          '<div class="form-btn-row">' +
+            '<button class="btn btn-ghost btn-full" data-action="close-confirm">Cancel</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function openImport(tripId){
+    importState = { open:true, tripId:tripId };
+    render();
+  }
+  function closeImport(){
+    importState = { open:false, tripId:null };
+    render();
+  }
+  function submitImport(){
+    const textEl = document.getElementById('import-text');
+    const resultEl = document.getElementById('import-result');
+    const added = importEntriesToTrip(importState.tripId, textEl.value);
+    if(added>0){
+      resultEl.innerHTML = '<div class="import-result">Imported '+added+' entr'+(added===1?'y':'ies')+'.</div>';
+      textEl.value = '';
+      expandedTrips.add(importState.tripId);
+      setTimeout(function(){ closeImport(); }, 900);
+    } else {
+      resultEl.innerHTML = '<div class="import-result" style="color:var(--danger);">No valid rows found — check the format and try again.</div>';
+    }
+  }
+
+  /* ---------- event delegation ---------- */
+  app.addEventListener('click', function(e){
+    const el = e.target.closest('[data-action]');
+    if(!el) return;
+    const action = el.getAttribute('data-action');
+    switch(action){
+      case 'switch-tab':
+        currentTab = el.getAttribute('data-tab');
+        render(true);
+        break;
+      case 'open-breakdown':
+        breakdownState.activeBucket = el.getAttribute('data-bucket');
+        currentTab = 'breakdown';
+        render(true);
+        break;
+      case 'switch-breakdown':
+        breakdownState.activeBucket = el.getAttribute('data-bucket');
+        render();
+        break;
+      case 'open-add-trip':
+        openAddTrip(el.getAttribute('data-preset-location'));
+        break;
+      case 'open-edit-trip':
+        openEditTrip(el.getAttribute('data-trip-id'));
+        break;
+      case 'close-modal':
+        closeModal();
+        break;
+      case 'overlay-close':
+        if(e.target===el) closeModal();
+        break;
+      case 'save-trip':
+        saveTripFromModal();
+        break;
+      case 'delete-trip':
+        deleteTrip(el.getAttribute('data-trip-id'));
+        break;
+      case 'reset-planning':
+        askConfirm('reset-planning', {tripId: el.getAttribute('data-trip-id')}, 'Clear all figures on the planning trip back to zero? This only affects the Planning tab.', 'Reset');
+        break;
+      case 'toggle-trip':
+        toggleTrip(el.getAttribute('data-trip-id'));
+        break;
+      case 'toggle-item-section':
+        toggleItemSection(el.getAttribute('data-trip-id'), el.getAttribute('data-list-key'));
+        break;
+      case 'toggle-bd-group':
+        toggleBdGroup(el.getAttribute('data-group-key'));
+        break;
+      case 'add-item-open':
+        openAddItem(el.getAttribute('data-trip-id'), el.getAttribute('data-list-key'));
+        break;
+      case 'edit-item':
+        openEditItem(el.getAttribute('data-trip-id'), el.getAttribute('data-list-key'), el.getAttribute('data-item-id'));
+        break;
+      case 'cancel-item':
+        cancelItem(el.getAttribute('data-trip-id'), el.getAttribute('data-list-key'));
+        break;
+      case 'save-item':
+        saveItem(el.getAttribute('data-trip-id'), el.getAttribute('data-list-key'), el.getAttribute('data-item-id'));
+        break;
+      case 'delete-item':
+        deleteItem(el.getAttribute('data-trip-id'), el.getAttribute('data-list-key'), el.getAttribute('data-item-id'));
+        break;
+      case 'reset-data':
+        resetData();
+        break;
+      case 'sign-out':
+        if(auth) auth.signOut();
+        break;
+      case 'open-import':
+        openImport(el.getAttribute('data-trip-id'));
+        break;
+      case 'close-import':
+        closeImport();
+        break;
+      case 'close-import-overlay':
+        if(e.target===el) closeImport();
+        break;
+      case 'submit-import':
+        submitImport();
+        break;
+      case 'confirm-yes':
+        runConfirmed();
+        break;
+      case 'close-confirm':
+        closeConfirm();
+        break;
+      case 'close-confirm-overlay':
+        if(e.target===el) closeConfirm();
+        break;
+    }
+  });
+
+  app.addEventListener('input', function(e){
+    if(e.target.classList.contains('fixed-cost-input')){
+      updateFixedCost(e.target.getAttribute('data-trip-id'), e.target.getAttribute('data-key'), e.target.value);
+    }
+    if(e.target.classList.contains('nights-input')){
+      updateNights(e.target.getAttribute('data-trip-id'), e.target.value);
+    }
+  });
+
+  app.addEventListener('change', function(e){
+    if(e.target.id==='mf-location'){
+      const newLocEl = document.getElementById('mf-location-new');
+      if(newLocEl){
+        newLocEl.style.display = e.target.value==='__new__' ? '' : 'none';
+        if(e.target.value==='__new__') newLocEl.focus();
+      }
+    }
+    if(e.target.classList.contains('if-category')){
+      const newCatEl = e.target.parentElement.querySelector('.if-category-new');
+      if(newCatEl){
+        newCatEl.style.display = e.target.value==='__new__' ? '' : 'none';
+        if(e.target.value==='__new__') newCatEl.focus();
+      }
+    }
+  });
+
+  initApp();
+})();
+</script>
+</body>
+</html>
